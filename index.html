@@ -3,23 +3,27 @@
 <head>
     <title>Proyecto Inteligencia Artificial</title>
 </head>
-<body>
+<body style="font-size: 200%;">
     <canvas id="canvas" width="800" height="800">
         Aquí debería haber un canvas.</canvas>
     <form onsubmit="event.preventDefault(); runScene()" style="float: left; margin-right: 5%;">
-        <input type="radio" name="busq" onclick="radioButtonHandler(true)">Busqueda informada<br/>
-        <input type="radio" name="busq" onclick="radioButtonHandler(false)">Busqueda no informada<br/><br/>
+        <input type="radio" name="search" onclick="radioButtonHandler(true)">Busqueda no informada<br/>
+        <input type="radio" name="search" onclick="radioButtonHandler(false)">Busqueda informada<br/><br/>
         <label for="opciones" id="label" style="display: none">Opciones: </label>
-        <select name="opciones" id="opciones1" style="display: none">
+        <select name="opciones" id="opciones1" style="display: none; font-size: 100%;">
             <option value="amplitud">amplitud</option>
             <option value="uniforme">costo uniforme</option>
             <option value="no ciclos">profundidad evitando ciclos</option>
         </select>
-        <select name="opciones" id="opciones2" style="display: none">
+        <select name="opciones" id="opciones2" style="display: none; font-size: 100%;">
             <option value="avara">Avara</option>
             <option value="A">A*</option>
-        </select><br/><br/>
-        <input type="submit" value="Ejecutar" id="submit" style="display: none">
+        </select><br/>
+        <input type="submit" value="Ejecutar" id="submit" style="display: none; font-size: 100%;">
+        <div id="resultados" style=" max-width: 410px; display: none;">
+            <h2>Resultados:</h2>
+            <p id="parrafo" style="white-space: pre-line">dfdfdhhs</p>
+        </div>
     </form>
     <script src="index.js"></script>
 </body>

@@ -125,24 +125,25 @@ function aiAlgorithm(node, updateQueue) {
     while (queue.length) {
         let isExpanded = false;
         const nd = queue.shift()
+        drawSquares(nd.stage);
         if (nd.isGoal()) {
             tiempo = performance.now() - startTime;
             return nd;
         }
         const move = movesChar(nd.stage, '2')
-        if (move.up && (nd.operator != 'D')) {
+        if (move.up && (nd.operator != 'D' || nd.stateHasChanged())) {
             isExpanded = true;
             updateQueue(queue, nd, move.up);
         }
-        if (move.right && (nd.operator != 'L')) {
+        if (move.right && (nd.operator != 'L' || nd.stateHasChanged())) {
             isExpanded = true;
             updateQueue(queue, nd, move.right);
         }
-        if (move.down && (nd.operator != 'U')) {
+        if (move.down && (nd.operator != 'U' || nd.stateHasChanged())) {
             isExpanded = true;
             updateQueue(queue, nd, move.down);
         }
-        if (move.left && (nd.operator != 'R')) {
+        if (move.left && (nd.operator != 'R' || nd.stateHasChanged())) {
             isExpanded = true;
             updateQueue(queue, nd, move.left);
         }
@@ -193,12 +194,13 @@ function a(queue, nd, operator) {
 
 function addToQueue(leaf, queue, nd, rule) {
     for (let i=0; i<=queue.length; i++) {
-        if (!leaf.isVIsited(nd)) {
-            leaf.addVIsited(nd);
+        if (!leaf.isVIsited(leaf)) {
             if (i == queue.length) {
+                leaf.addVIsited(leaf);
                 queue.push(leaf);
                 break
             } else if (rule(i)) {
+                leaf.addVIsited(leaf);
                 queue.splice(i, 0, leaf);
                 break
             } 
@@ -241,6 +243,9 @@ class Node {
         const goalPosStr = JSON.stringify(playerPos(matrix,'6'))
         return playerPosStr == goalPosStr
     }
+    stateHasChanged() {
+        return this.flamesAndStarsHaveChanged(this.parent.flames, this.parent.stars)
+    }
     hasFlames() {
         return this.flames > 0;
     }
@@ -249,18 +254,27 @@ class Node {
     }
     isVIsited(node) {
         const pos = playerPos(node.stage, '2')
-        const v = this.visited.some(p=>JSON.stringify(p)==JSON.stringify(pos))
+        const v = this.visited.some(p=>JSON.stringify(p.pos)==JSON.stringify(pos) && !this.flamesAndStarsHaveChanged(p.flames,p.stars))
         return v
     }
+    flamesAndStarsHaveChanged(f,s) {
+        const starsChanged = this.stars > s;
+        const flamesChanged = this.flames > f;
+        return starsChanged || flamesChanged;
+    }
     addVIsited(node) {
-        const pos = playerPos(node.stage, '2')
+        const pos = {
+            pos: playerPos(node.stage, '2'),
+            flames: node.flames,
+            stars: node.stars
+        }
         this.visited.push(pos)
     }
     getHeuristic() {
         const p = playerPos(this.stage, '2');
         const g = playerPos(this.stage, '6');
         if (g) {
-            return Math.sqrt(Math.pow(p[0]-g[0],2)+Math.pow(p[1]-g[1],2))
+            return Math.sqrt(Math.pow(p[0]-g[0],2)+Math.pow(p[1]-g[1],2))/2
         }
         return 0
     }
@@ -293,62 +307,64 @@ function moveOne(move, mtrx, player, node) {
         stars: node.stars,
         flames: node.flames
     }
-    if (move == 'U') {
-        mtrx[pos[0] - 1][pos[1]] = player;
-    } else if (move == 'D') {
-        mtrx[pos[0] + 1][pos[1]] = player;
-    } else if (move == 'L') {
-        mtrx[pos[0]][pos[1] - 1] = player;
-    } else if (move == 'R') {
-        mtrx[pos[0]][pos[1] + 1] = player;
-    }
     if (playerPlace == '0') {
         mtrx[pos[0]][pos[1]] = '0';
-        if (node.hasStars()) {
-            nodeProperties.stars--;
-            nodeProperties.weight+=0.5;
-        } else {
-            nodeProperties.weight++;
-        }
     } else if (playerPlace == '3') {
-        if (node.hasFlames()) {
+        if (node.parent ? node.parent.hasFlames() : node.hasFlames()) {
             mtrx[pos[0]][pos[1]] = '3';
-            nodeProperties.weight++;
-        } else if (node.hasStars()) {
-            mtrx[pos[0]][pos[1]] = '0';
-            nodeProperties.stars--;
-            nodeProperties.stars+=6;
-            nodeProperties.weight+=0.5;
         } else {
             mtrx[pos[0]][pos[1]] = '0';
-            nodeProperties.weight++;
-            nodeProperties.stars+=6;
         }
     } else if (playerPlace == '4') {
-        if (node.hasStars()) {
+        if (node.parent ? node.parent.hasStars() : node.hasStars()) {
             mtrx[pos[0]][pos[1]] = '4';
-            nodeProperties.stars--;
-            nodeProperties.weight+=0.5;
         } else {
             mtrx[pos[0]][pos[1]] = '0';
-            nodeProperties.weight++;
-            nodeProperties.flames++;
         }
     } else if (playerPlace == '5') {
-        if (node.hasFlames()) {
+        if (node.parent ? node.parent.hasFlames() : node.hasFlames()) {
             mtrx[pos[0]][pos[1]] = '0';
-            nodeProperties.weight++;
-            nodeProperties.flames--;
-        } else if (node.hasStars()) {
-            mtrx[pos[0]][pos[1]] = '5';
-            nodeProperties.stars--;
-            nodeProperties.weight+=0.5;
         } else {
             mtrx[pos[0]][pos[1]] = '5'
-            nodeProperties.weight+=6;
         }
     }
+    if (move == 'U') {
+        changeNextStep(mtrx[pos[0] - 1][pos[1]]);
+        mtrx[pos[0] - 1][pos[1]] = player;
+    } else if (move == 'D') {
+        changeNextStep(mtrx[pos[0] + 1][pos[1]]);
+        mtrx[pos[0] + 1][pos[1]] = player;
+    } else if (move == 'L') {
+        changeNextStep(mtrx[pos[0]][pos[1] - 1]);
+        mtrx[pos[0]][pos[1] - 1] = player;
+    } else if (move == 'R') {
+        changeNextStep(mtrx[pos[0]][pos[1] + 1]);
+        mtrx[pos[0]][pos[1] + 1] = player;
+    }
     return nodeProperties;
+    function changeNextStep(playerDirection) {
+        if (node.hasStars()) {
+            nodeProperties.weight+=0.5;
+            nodeProperties.stars--;
+        } else {
+            nodeProperties.weight++;
+        }
+        if (playerDirection == '3') {
+            if (!node.hasFlames()) {
+                nodeProperties.stars+=6;
+            }
+        } else if (playerDirection == '4') {
+            if (!node.hasStars()) {
+                nodeProperties.flames++;
+            }
+        } else if (playerDirection == '5') {
+            if (!node.hasStars() && !node.hasFlames()) {
+                nodeProperties.weight+=6;
+            } else if (node.hasFlames()) {
+                nodeProperties.flames--;
+            }
+        }
+    }
 }
 
 function movesChar(matrix, player) {
